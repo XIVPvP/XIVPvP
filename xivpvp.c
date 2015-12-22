@@ -68,7 +68,7 @@ void *trayLoop() {
 	HWND hWnd;
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 	MSG msg;
-	char title[] = "XIVPvP v1.0";
+	char title[] = "XIVPvP v1.1";
 	titleWide = (wchar_t*)calloc(strlen(title) + 1, sizeof(wchar_t));
 	mbstowcs(titleWide, title, strlen(title));
 	wcscpy((wchar_t*)szTitle, titleWide);
@@ -347,11 +347,15 @@ UINT ProcessBuffer(unsigned char *buf, UINT bufLen) {
 		if(found == sizeof(header)) {
 			// fragmented packet without enough length for a header
 			if(bufLen-i < FFXIVLen) {
-				return bufLen-i;
+				//return bufLen-i;
+				return 0;
 			}
 			memcpy(&packet, buf+i, FFXIVLen);
 			// large, fragmented packet
 			if(packet.len > bufLen-i) {
+				if(packet.len > MAXBUF) {
+					return 0;
+				}
 				return bufLen-i;
 			}
 			dataLen = packet.len - FFXIVLen;
