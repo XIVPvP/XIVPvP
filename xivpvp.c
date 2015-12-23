@@ -70,7 +70,7 @@ void *trayLoop() {
 	HWND hWnd;
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 	MSG msg;
-	char title[] = "XIVPvP v1.1";
+	char title[] = "XIVPvP v1.2";
 	titleWide = (wchar_t*)calloc(strlen(title) + 1, sizeof(wchar_t));
 	mbstowcs(titleWide, title, strlen(title));
 	wcscpy((wchar_t*)szTitle, titleWide);
