@@ -63,6 +63,8 @@ struct SealRock {
 	unsigned char *matchData;
 	UINT players;
 };
+struct SealRock *SealRockArgs = NULL;
+UINT players = 0;
 
 void *trayLoop() {
 	HWND hWnd;
@@ -278,6 +280,8 @@ void *SealRock(void *arguments) {
 	}
 	free(args->playerData);
 	free(args);
+	SealRockArgs = NULL;
+	players = 0;
 	if(SendData("frontline", buf)) {
 		snprintf(url, 46, "https://xivpvp.com/frontline/match/%d", timestamp);
 	}
@@ -329,10 +333,9 @@ UINT ProcessBuffer(unsigned char *buf, UINT bufLen) {
 	unsigned char *tempData;
 	struct FFXIV packet;
 	struct FFXIV_msg msg;
-	struct SealRock *SealRockArgs = NULL;
 	uint8_t *msgPos;
 	UINT i, k, found, dataLen;
-	UINT players = 0;
+	
 	pthread_t pth;
 	//printf("\nbuffer length %d\n", bufLen);
 	// search for header
