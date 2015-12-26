@@ -13,6 +13,8 @@
 #include "zlib.h"
 #include "windivert.h"
 
+double VERSION = 1.3;
+
 #define MAXBUF 0xFFFF
 #define WM_MYMESSAGE (WM_USER + 1)
 #define MAX_LOADSTRING 100
@@ -23,6 +25,7 @@
 
 typedef DWORD (*GetTcpInfo)(PVOID, PDWORD, BOOL, ULONG, TCP_TABLE_CLASS, ULONG);
 static DWORD CaptureThread(LPVOID arg);
+static void Exit();
 
 HINSTANCE hInst;
 TCHAR szTitle[MAX_LOADSTRING];
@@ -33,6 +36,7 @@ NOTIFYICONDATA nid;
 ATOM Class(HINSTANCE hInstance);
 HWND InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+HANDLE mutex;
 
 unsigned char header[] = {0x52, 0x52, 0xA0, 0x41, 0xFF, 0x5D, 0x46};
 UINT lastPacket = 0;
@@ -66,11 +70,57 @@ struct SealRock {
 struct SealRock *SealRockArgs = NULL;
 UINT players = 0;
 
+void checkVersion() {
+	struct hostent *apiServer;
+	struct sockaddr_in sock;
+	char getStr[MAXBUF];
+	char receiveStr[MAXBUF];
+	WSADATA wsaData;
+	SOCKET s;
+	ssize_t n;
+	sprintf(getStr, "GET /update/ HTTP/1.0\r\nUser-Agent: XIVPvP v%G\r\nHost: client.xivpvp.com\r\nConnection: close\r\n\r\n", VERSION);
+	if(WSAStartup(0x0101, &wsaData) != 0) {
+		return;
+	}
+	s = socket(AF_INET, SOCK_STREAM, 0);
+	if(s == INVALID_SOCKET) {
+		WSACleanup();
+		return;
+	}
+	if((apiServer = gethostbyname("client.xivpvp.com")) == NULL) {
+		WSACleanup();
+		return;
+	}
+	memcpy(&sock.sin_addr.s_addr, apiServer->h_addr, apiServer->h_length);
+	sock.sin_family = AF_INET;
+	sock.sin_port = htons(80);
+	if((connect(s, (struct sockaddr *)&sock, sizeof(sock)))){
+		WSACleanup();
+		return;
+	}
+	if(send(s, getStr , strlen(getStr), 0) == -1) {
+		WSACleanup();
+		return;
+	}
+	while ((n = recv(s, receiveStr, MAXBUF, 0)) > 0) {
+		receiveStr[n] = '\0';
+	}
+	if(strstr(receiveStr, "true")) {
+		if(MessageBox(NULL, "A new version of XIVPvP is available.\nDo you want to download it now?", "Update available", MB_YESNO | MB_ICONQUESTION) == IDYES) {
+			ShellExecuteA(NULL, "open", "https://xivpvp.com/client", NULL, NULL, SW_SHOWDEFAULT);
+			Exit();
+		}
+	}
+	closesocket(s);
+	WSACleanup();
+}
+
 void *trayLoop() {
 	HWND hWnd;
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 	MSG msg;
-	char title[] = "XIVPvP v1.2";
+	char title[MAX_LOADSTRING];
+	snprintf(title, sizeof title, "XIVPvP v%G", VERSION);
 	titleWide = (wchar_t*)calloc(strlen(title) + 1, sizeof(wchar_t));
 	mbstowcs(titleWide, title, strlen(title));
 	wcscpy((wchar_t*)szTitle, titleWide);
@@ -78,6 +128,7 @@ void *trayLoop() {
 	Class(hInstance);
 	hWnd = InitInstance(hInstance, FALSE);
 	if (!hWnd) {
+		CloseHandle(mutex);
 		exit(1);
 	}
 	HICON hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(101));
@@ -87,7 +138,9 @@ void *trayLoop() {
 	nid.uCallbackMessage = WM_MYMESSAGE;
 	nid.hIcon = hIcon;
 	strcpy(nid.szTip, title);
-	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+	strcpy(nid.szInfo, title);
+	nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_INFO;
+	nid.dwInfoFlags = NIIF_INFO;
 	Shell_NotifyIcon(NIM_ADD, &nid);
 	while (GetMessage(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);
@@ -151,6 +204,7 @@ void ShowMenu(HWND hWnd) {
 }
 
 void Exit() {
+	CloseHandle(mutex);
 	Shell_NotifyIcon(NIM_DELETE, &nid);
 	PostQuitMessage(0);
 	exit(1);
@@ -225,30 +279,35 @@ UINT SendData(char *location, char *data) {
 	WSADATA wsaData;
 	SOCKET s;
 	ssize_t n;
-	sprintf(postStr, "POST /%s/ HTTP/1.0\r\nContent-Type: application/x-www-form-urlencoded\r\nUser-Agent: XIVPvP\r\nHost: client.xivpvp.com\r\nContent-Length: %u\r\nConnection: close\r\n\r\n%s", location, (unsigned)strlen(data), data);
-	if(WSAStartup(0x0101, &wsaData) !=0) {
+	sprintf(postStr, "POST /%s/ HTTP/1.0\r\nContent-Type: application/x-www-form-urlencoded\r\nUser-Agent: XIVPvP v%G\r\nHost: client.xivpvp.com\r\nContent-Length: %u\r\nConnection: close\r\n\r\n%s", location, VERSION, (unsigned)strlen(data), data);
+	if(WSAStartup(0x0101, &wsaData) != 0) {
 		return 0;
 	}
 	s = socket(AF_INET, SOCK_STREAM, 0);
-	if(s == INVALID_SOCKET) {	
+	if(s == INVALID_SOCKET) {
+		WSACleanup();
 		return 0;
 	}
 	if((apiServer = gethostbyname("client.xivpvp.com")) == NULL) {
+		WSACleanup();
 		return 0;
 	}
 	memcpy(&sock.sin_addr.s_addr, apiServer->h_addr, apiServer->h_length);
 	sock.sin_family = AF_INET;
 	sock.sin_port = htons(80);
 	if((connect(s, (struct sockaddr *)&sock, sizeof(sock)))){
+		WSACleanup();
 		return 0;
 	}
 	if(send(s, postStr , strlen(postStr), 0) == -1) {
+		WSACleanup();
 		return 0;
 	}
 	while ((n = recv(s, receiveStr, MAXBUF, 0)) > 0) {
 		receiveStr[n] = '\0';
 	}
 	if(strstr(receiveStr, "OKAY")) {
+		WSACleanup();
 		return 1;
 	}
 	closesocket(s);
@@ -500,8 +559,14 @@ int main(int argc, char **argv) {
 	HANDLE handle = NULL;
 	char rule[256];
 	UINT pid = 0;
+	mutex = CreateMutex(NULL, TRUE, "XIVPvP");
+	if (GetLastError() == ERROR_ALREADY_EXISTS ) {
+		 MessageBox(NULL, "XIVPvP is already running.", "Error", MB_ICONWARNING);
+		 Exit();
+	}
 	pthread_t tray;
 	pthread_create(&tray, NULL, trayLoop, NULL);
+	checkVersion();
 	while(TRUE) {
 		if((UINT)time(NULL) - lastPacket > 30) {
 			if(lastPacket > 0) {
@@ -517,7 +582,7 @@ int main(int argc, char **argv) {
 				//printf("PID: %d, capture rule: %s\n", pid, rule);
 				handle = WinDivertOpen(rule, WINDIVERT_LAYER_NETWORK, 0, WINDIVERT_FLAG_SNIFF);
 				if(handle == INVALID_HANDLE_VALUE) {
-					MessageBox(NULL, "Failed to open capture device.\nMake sure you running as an Administrator.", "Error", MB_ICONWARNING);
+					MessageBox(NULL, "Failed to open capture device.\nMake sure you're running XIVPvP as an Administrator.", "Error", MB_ICONWARNING);
 					Exit();
 				}
 				CreateThread(NULL, 1, (LPTHREAD_START_ROUTINE)CaptureThread, (LPVOID)handle, 0, NULL);
