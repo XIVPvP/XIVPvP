@@ -560,7 +560,7 @@ int main(int argc, char **argv) {
 	char rule[256];
 	UINT pid = 0;
 	mutex = CreateMutex(NULL, TRUE, "XIVPvP");
-	if (GetLastError() == ERROR_ALREADY_EXISTS ) {
+	if (GetLastError() == ERROR_ALREADY_EXISTS) {
 		 MessageBox(NULL, "XIVPvP is already running.", "Error", MB_ICONWARNING);
 		 Exit();
 	}
