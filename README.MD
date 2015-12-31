@@ -29,6 +29,7 @@ There are still some issues with fragmented packets, which is my current focus t
 For any other bugs or feature requests, please open an issue.
 
 # Changelog
+- v1.4 - fixed a crash when packets had 0 messages (?)
 - v1.3 - implemented an update check on startup; allow only once instance
 - v1.2 - fixed a bug where incomplete player data was submitted due to even more fragmentation!
 - v1.1 - discovered a crash due to fragmented packets. This is a quick fix, need to find out why the data is getting corrupted and implement a proper fix that won't drop corrupted packets.
