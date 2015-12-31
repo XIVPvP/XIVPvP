@@ -13,7 +13,7 @@
 #include "zlib.h"
 #include "windivert.h"
 
-double VERSION = 1.3;
+double VERSION = 1.4;
 
 #define MAXBUF 0xFFFF
 #define WM_MYMESSAGE (WM_USER + 1)
@@ -419,6 +419,9 @@ UINT ProcessBuffer(unsigned char *buf, UINT bufLen) {
 					return 0;
 				}
 				return bufLen-i;
+			}
+			if(packet.len < 96) {
+				return 0;
 			}
 			dataLen = packet.len - FFXIVLen;
 			packet.data = malloc(dataLen);
