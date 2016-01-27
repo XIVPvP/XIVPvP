@@ -13,7 +13,7 @@
 #include "zlib.h"
 #include "windivert.h"
 
-double VERSION = 1.41;
+double VERSION = 1.42;
 
 #define MAXBUF 0xFFFF
 #define WM_MYMESSAGE (WM_USER + 1)
@@ -276,6 +276,7 @@ UINT SendData(char *location, char *data) {
 	struct sockaddr_in sock;
 	char postStr[MAXBUF];
 	char receiveStr[MAXBUF];
+	UINT id;
 	WSADATA wsaData;
 	SOCKET s;
 	ssize_t n;
@@ -308,7 +309,8 @@ UINT SendData(char *location, char *data) {
 	}
 	if(strstr(receiveStr, "OKAY")) {
 		WSACleanup();
-		return 1;
+		sscanf(strstr(receiveStr, "OKAY"), "OKAY_%d", &id);
+		return id;
 	}
 	closesocket(s);
 	WSACleanup();
@@ -318,14 +320,12 @@ UINT SendData(char *location, char *data) {
 void *SealRock(void *arguments) {
 	struct SealRock *args = arguments;
 	char buf[MAXBUF];
-	UINT i, p;
-	uint32_t timestamp;
+	UINT i, p, id;
 	// send raw packet in hexadecimal
 	sprintf(buf, "m=");
 	for(i = 0; i < 64; i++) {
 		sprintf(buf+strlen(buf), "%02x", args->matchData[i]);
 	}
-	memcpy(&timestamp, args->matchData, 4);
 	free(args->matchData);
 	for(p = 0; p < args->players; p++) {
 		sprintf(buf+strlen(buf), "&p[%d]=", p);
@@ -341,8 +341,9 @@ void *SealRock(void *arguments) {
 	free(args);
 	SealRockArgs = NULL;
 	players = 0;
-	if(SendData("frontline", buf)) {
-		snprintf(url, 46, "https://xivpvp.com/frontline/match/%d", timestamp);
+	id = SendData("frontline", buf);
+	if(id != 0) {
+		snprintf(url, 46, "https://xivpvp.com/frontline/match/%d", id);
 	}
 	return NULL;
 }
@@ -350,18 +351,17 @@ void *SealRock(void *arguments) {
 void *WolvesDen(void *arguments) {
 	unsigned char *data = arguments;
 	char buf[MAXBUF];
-	UINT i;
-	uint32_t timestamp;
+	UINT i, id;
 	sprintf(buf, "m=");
 	// just send raw data, no point in making a struct yet in the client
 	// we're still discovering how the packet is organized
 	for(i = 0; i < 544; i++) {
 		sprintf(buf+strlen(buf), "%02x", data[i]);
 	}
-	memcpy(&timestamp, data, 4);
 	free(data);
-	if(SendData("wolvesden", buf)) {
-		snprintf(url, 46, "https://xivpvp.com/wolvesden/match/%d", timestamp);
+	id = SendData("wolvesden", buf);
+	if(id != 0) {
+		snprintf(url, 46, "https://xivpvp.com/wolvesden/match/%d", id);
 	}
 	return NULL;
 }
@@ -467,6 +467,26 @@ UINT ProcessBuffer(unsigned char *buf, UINT bufLen) {
 					memcpy(WDPacket, msgPos+32, 544);
 					pthread_create(&pth, NULL, WolvesDen, (void *)WDPacket);
 				}
+				/* Duty finder notifications - not year ready
+				if(msg.type == 0x02de) {
+					if(msgPos[32] == 0xaf) { // Seal rock
+						if(msgPos[36] == 0x01) { // Party update
+							if(msgPos[37]+msgPos[38]+msgPos[39] == 8) {
+								sprintf(nid.szInfo, "Party formed - %d Tank%s, %d DPS, %d Healer%s - AWT: %dm", msgPos[37], msgPos[37] == 1?"":"s", msgPos[38], msgPos[39], msgPos[39] == 1?"":"s", msgPos[40]);
+							} else {
+								sprintf(nid.szInfo, "Forming party - AWT: %dm\n", msgPos[40]);
+							}
+							Shell_NotifyIcon(NIM_MODIFY, &nid);
+						} else if(msgPos[36] == 0x02) { // Instance update
+							sprintf(nid.szInfo, "Instance formed - %d Tank%s, %d DPS, %d Healer%s", msgPos[37], msgPos[37] == 1?"":"s", msgPos[38], msgPos[39], msgPos[39] == 1?"":"s");
+							Shell_NotifyIcon(NIM_MODIFY, &nid);
+						}
+					} else if (msgPos[32] == 0x00 && msgPos[36] == 0x01) { // weird, but that's how it is
+						sprintf(nid.szInfo, "Party dropped and reformed - %d Tank%s, %d DPS, %d Healer%s - AWT: %dm", msgPos[37], msgPos[37] == 1?"":"s", msgPos[38], msgPos[39], msgPos[39] == 1?"":"s", msgPos[40]);
+						Shell_NotifyIcon(NIM_MODIFY, &nid);
+					}
+				}
+				*/
 				msgPos += msg.size;
 			}
 			free(packet.data);
@@ -542,7 +562,7 @@ int BuildCaptureRule(UINT pid, char *str, size_t len) {
 	MIB_TCPTABLE_OWNER_PID *ret;
 	GetTcpInfo gettcp;
 	HMODULE iphlp;
-	DWORD dwSize = 0x1000;
+	DWORD dwSize = MAXBUF;
 	iphlp = LoadLibrary("iphlpapi.dll");
 	gettcp = (GetTcpInfo) GetProcAddress(iphlp, "GetExtendedTcpTable");
 	gettcp(buf, &dwSize, FALSE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0);
