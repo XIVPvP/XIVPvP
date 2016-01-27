@@ -467,7 +467,7 @@ UINT ProcessBuffer(unsigned char *buf, UINT bufLen) {
 					memcpy(WDPacket, msgPos+32, 544);
 					pthread_create(&pth, NULL, WolvesDen, (void *)WDPacket);
 				}
-				/* Duty finder notifications - not year ready
+				/* Duty finder notifications - not yet ready
 				if(msg.type == 0x02de) {
 					if(msgPos[32] == 0xaf) { // Seal rock
 						if(msgPos[36] == 0x01) { // Party update
@@ -565,7 +565,11 @@ int BuildCaptureRule(UINT pid, char *str, size_t len) {
 	DWORD dwSize = MAXBUF;
 	iphlp = LoadLibrary("iphlpapi.dll");
 	gettcp = (GetTcpInfo) GetProcAddress(iphlp, "GetExtendedTcpTable");
-	gettcp(buf, &dwSize, FALSE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0);
+	i = gettcp(buf, &dwSize, FALSE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0);
+	if (i != NO_ERROR) {
+		MessageBox(NULL, "Failed GetExtendedTcpTable", "Error", MB_ICONWARNING);
+		Exit();
+	}
 	ret = (MIB_TCPTABLE_OWNER_PID *)buf;
 	for(i = 0; i < ret->dwNumEntries; i++) {
 		if(ret->table[i].dwOwningPid == pid) {
