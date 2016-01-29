@@ -343,7 +343,7 @@ void *SealRock(void *arguments) {
 	players = 0;
 	id = SendData("frontline", buf);
 	if(id != 0) {
-		snprintf(url, 46, "https://jp.xivpvp.com/frontline/match/%d", id);
+		snprintf(url, 49, "https://jp.xivpvp.com/frontline/match/%d", id);
 	}
 	return NULL;
 }
@@ -361,7 +361,7 @@ void *WolvesDen(void *arguments) {
 	free(data);
 	id = SendData("wolvesden", buf);
 	if(id != 0) {
-		snprintf(url, 46, "https://jp.xivpvp.com/wolvesden/match/%d", id);
+		snprintf(url, 49, "https://jp.xivpvp.com/wolvesden/match/%d", id);
 	}
 	return NULL;
 }
