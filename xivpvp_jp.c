@@ -10,8 +10,6 @@
 #include <unistd.h>
 #include <time.h>
 #include <shellapi.h>
-#include <locale.h>
-#include <tchar.h>
 #include "zlib.h"
 #include "windivert.h"
 
