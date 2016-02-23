@@ -29,6 +29,7 @@ There are still some issues with fragmented packets, which is my current focus t
 For any other bugs or feature requests, please open an issue.
 
 # Changelog
+- v1.43 - fix Wolves' Den capture
 - v1.42 - fix bug "FFXIV not running" when a lot of TCP connections are opened.
 - v1.41 - oopps, proper fix.
 - v1.4 - fixed a crash when packets had 0 messages (?)

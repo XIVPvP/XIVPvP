@@ -13,7 +13,7 @@
 #include "zlib.h"
 #include "windivert.h"
 
-double VERSION = 1.42;
+double VERSION = 1.43;
 
 #define MAXBUF 0xFFFF
 #define WM_MYMESSAGE (WM_USER + 1)
@@ -355,7 +355,7 @@ void *WolvesDen(void *arguments) {
 	sprintf(buf, "m=");
 	// just send raw data, no point in making a struct yet in the client
 	// we're still discovering how the packet is organized
-	for(i = 0; i < 544; i++) {
+	for(i = 0; i < 656; i++) {
 		sprintf(buf+strlen(buf), "%02x", data[i]);
 	}
 	free(data);
@@ -461,10 +461,10 @@ UINT ProcessBuffer(unsigned char *buf, UINT bufLen) {
 					memcpy(SealRockArgs->matchData, msgPos+32, msg.size-32);
 					pthread_create(&pth, NULL, SealRock, (void *)SealRockArgs);
 				}
-				// Wolves den player + summary message, fixed length 544
+				// Wolves den player + summary message, fixed length 656
 				if(msg.type == 0x2df) {
-					unsigned char *WDPacket = malloc(544);
-					memcpy(WDPacket, msgPos+32, 544);
+					unsigned char *WDPacket = malloc(656);
+					memcpy(WDPacket, msgPos+32, 656);
 					pthread_create(&pth, NULL, WolvesDen, (void *)WDPacket);
 				}
 				/* Duty finder notifications - not yet ready
